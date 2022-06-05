@@ -23,5 +23,8 @@ func main() {
 		ctx.JSON(http.StatusOK, user)
 	})
 
-	r.Run()
+	err := r.Run()
+
+	if err != nil {
+	}
 }
