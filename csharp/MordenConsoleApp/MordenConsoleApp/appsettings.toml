@@ -1,0 +1,9 @@
+﻿# service config.
+LoopTimes = 5
+
+[Serilog.MinimumLevel]
+Default = "Warning"
+
+[Serilog.MinimumLevel.Override]
+Microsoft = "Information"
+System = "Warning"
