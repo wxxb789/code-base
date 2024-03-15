@@ -1,0 +1,55 @@
+version: "3.8"
+services:
+
+# begin: miniflux
+  miniflux:
+    container_name: miniflux
+    image: miniflux/miniflux:latest
+    ports:
+      - "8001:8080"
+    depends_on:
+      - miniflux-db
+    environment:
+      - DATABASE_URL=postgres://miniflux:<secret>@db/miniflux?sslmode=disable
+      - RUN_MIGRATIONS=1
+      - BASE_URL=https://rss.lnception.cn/
+  miniflux-db:
+    container_name: miniflux-db
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=miniflux
+      - POSTGRES_PASSWORD=<secret>
+    volumes:
+      - miniflux-db-data:/var/lib/postgresql/data
+# end: miniflux
+
+# begin: rsshub 
+  rsshub:
+    container_name: rsshub
+    image: diygod/rsshub
+    restart: always
+    environment:
+      NODE_ENV: production
+      CACHE_TYPE: redis
+      REDIS_URL: "redis://redis:6379/"
+      PUPPETEER_WS_ENDPOINT: "ws://browserless:3000"
+    depends_on:
+      - rsshub-redis
+      - rsshub-browserless
+  rsshub-browserless:
+    container_name: rsshub-browserless
+    image: browserless/chrome
+    restart: always
+  rsshub-redis:
+    container_name: rsshub-redis
+    image: redis:alpine
+    restart: always
+    volumes:
+      - rsshub-redis-data:/data
+# end: rsshub
+
+volumes:
+  miniflux-db-data:
+    external: true
+  rsshub-redis-data:
+    external: true
