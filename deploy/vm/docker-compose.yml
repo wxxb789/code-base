@@ -1,41 +1,83 @@
 version: "3.8"
 services:
+  # begin: traefik
+  traefik:
+    image: "traefik:v2.11.0"
+    container_name: traefik
+    restart: always
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.watch=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=wxxb789@outlook.com"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    depends_on:
+      - miniflux
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "./letsencrypt:/letsencrypt"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+  # end: traefik
 
-# begin: miniflux
+  # begin: miniflux
   miniflux:
     container_name: miniflux
     image: miniflux/miniflux:latest
     ports:
-      - "8001:8080"
+      - "8080"
     depends_on:
       - miniflux-db
     environment:
-      - DATABASE_URL=postgres://miniflux:<secret>@db/miniflux?sslmode=disable
+      - DATABASE_URL=postgres://miniflux:minifluxdbpass@miniflux-db/miniflux?sslmode=disable
       - RUN_MIGRATIONS=1
-      - BASE_URL=https://rss.lnception.cn/
+      - BASE_URL=https://miniflux.550w.xyz/
+      - CREATE_ADMIN=1
+      - ADMIN_USERNAME=wxxb789
+      - ADMIN_PASSWORD=wxxb789@miniflux
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.miniflux.rule=Host(`miniflux.550w.xyz`)"
+      - "traefik.http.routers.miniflux.entrypoints=websecure"
+      - "traefik.http.routers.miniflux.tls.certresolver=letsencrypt"
   miniflux-db:
     container_name: miniflux-db
     image: postgres:15
     environment:
       - POSTGRES_USER=miniflux
-      - POSTGRES_PASSWORD=<secret>
+      - POSTGRES_PASSWORD=minifluxdbpass
+      - POSTGRES_DB=miniflux
     volumes:
       - miniflux-db-data:/var/lib/postgresql/data
-# end: miniflux
 
-# begin: rsshub 
+  # end: miniflux
+
+  # begin: rsshub
   rsshub:
     container_name: rsshub
     image: diygod/rsshub
     restart: always
+    ports:
+      - "1200:1200"
     environment:
       NODE_ENV: production
       CACHE_TYPE: redis
-      REDIS_URL: "redis://redis:6379/"
-      PUPPETEER_WS_ENDPOINT: "ws://browserless:3000"
+      REDIS_URL: "redis://rsshub-redis:6379/"
+      PUPPETEER_WS_ENDPOINT: "ws://rsshub-browserless:3000"
+      PROXY_URI: "socks5h://rsshub-warp-socks:9091"
     depends_on:
       - rsshub-redis
       - rsshub-browserless
+      - rsshub-warp-socks
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.rsshub.rule=Host(`rsshub.550w.xyz`)"
+      - "traefik.http.routers.rsshub.entrypoints=websecure"
+      - "traefik.http.routers.rsshub.tls.certresolver=letsencrypt"
   rsshub-browserless:
     container_name: rsshub-browserless
     image: browserless/chrome
@@ -46,10 +88,77 @@ services:
     restart: always
     volumes:
       - rsshub-redis-data:/data
-# end: rsshub
+  rsshub-warp-socks:
+    image: monius/docker-warp-socks:latest
+    privileged: true
+    restart: always
+    volumes:
+      - /lib/modules:/lib/modules
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: 0
+      net.ipv4.conf.all.src_valid_mark: 1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "https://www.cloudflare.com/cdn-cgi/trace"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+  # end: rsshub
+
+  # begin: wewe-rss
+  wewe-rss-app:
+    container_name: wewe-rss-app
+    image: cooderl/wewe-rss-sqlite:latest
+    ports:
+      - 4000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wewe-rss.rule=Host(`wewe-rss.550w.xyz`)"
+      - "traefik.http.routers.wewe-rss.entrypoints=websecure"
+      - "traefik.http.routers.wewe-rss.tls.certresolver=letsencrypt"
+    environment:
+      # 数据库连接地址
+      # - DATABASE_URL=file:../data/wewe-rss.db
+      - DATABASE_TYPE=sqlite
+      # 服务接口请求授权码
+      - AUTH_CODE=wxxb789@wewe-rss-sqlite
+      # 提取全文内容模式
+      - FEED_MODE=fulltext
+      # 定时更新订阅源Cron表达式
+      - CRON_EXPRESSION=35 5,17 * * *
+      # 服务接口请求限制，每分钟请求次数
+      # - MAX_REQUEST_PER_MINUTE=60
+      # 外网访问时，需设置为服务器的公网 IP 或者域名地址
+      - SERVER_ORIGIN_URL=https://wewe-rss.550w.xyz
+
+    volumes:
+      # 映射数据库文件存储位置，容器重启后不丢失
+      - wewe-rss-app-data:/app/data
+  # end: wewe-rss
+
+  # begin: memos
+  memos:
+    image: neosmemo/memos:stable
+    container_name: memos
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.memos.rule=Host(`memos.550w.xyz`)"
+      - "traefik.http.routers.memos.entrypoints=websecure"
+      - "traefik.http.routers.memos.tls.certresolver=letsencrypt"
+    volumes:
+      - memos-data:/var/opt/memos
+    ports:
+      - 5230:5230
+  # end: memos
 
 volumes:
   miniflux-db-data:
     external: true
   rsshub-redis-data:
+    external: true
+  wewe-rss-app-data:
+    external: true
+  memos-data:
     external: true
