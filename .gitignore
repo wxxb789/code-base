@@ -1,11 +1,4 @@
-
-# Created by https://www.toptal.com/developers/gitignore/api/go,jetbrains
-# Edit at https://www.toptal.com/developers/gitignore?templates=go,jetbrains
-
-### Go ###
-# If you prefer the allow list template instead of the deny list, see community template:
-# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
-#
+# Ignore Tools: VS, VSCode, JetBrains
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -407,7 +400,6 @@ PublishScripts/
 nuget.config
 
 # Microsoft Azure Build Output
-csx/
 *.build.csdef
 
 # Microsoft Azure Emulator
