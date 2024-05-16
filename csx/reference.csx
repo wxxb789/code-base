@@ -6,3 +6,6 @@
 #r "nuget: Serilog.Sinks.File, *"
 
 #r "nuget: Microsoft.Extensions.Logging, *"
+#r "nuget: Microsoft.Extensions.Configuration, *"
+#r "nuget: Microsoft.Extensions.Configuration.Json, *"
+#r "nuget: Microsoft.Extensions.Configuration.Ini, *"
