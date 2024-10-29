@@ -1,4 +1,4 @@
-version: "3.8"
+# do not use version property
 services:
   # begin: traefik
   traefik:
@@ -28,6 +28,7 @@ services:
   miniflux:
     container_name: miniflux
     image: miniflux/miniflux:latest
+    restart: always
     ports:
       - "8080"
     depends_on:
@@ -47,6 +48,7 @@ services:
   miniflux-db:
     container_name: miniflux-db
     image: postgres:15
+    restart: always
     environment:
       - POSTGRES_USER=miniflux
       - POSTGRES_PASSWORD=minifluxdbpass
@@ -111,6 +113,7 @@ services:
   wewe-rss-app:
     container_name: wewe-rss-app
     image: cooderl/wewe-rss-sqlite:latest
+    restart: always
     ports:
       - 4000
     labels:
@@ -142,6 +145,7 @@ services:
   memos:
     image: neosmemo/memos:stable
     container_name: memos
+    restart: always
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.memos.rule=Host(`memos.550w.xyz`)"
